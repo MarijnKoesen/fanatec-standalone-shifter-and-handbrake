@@ -35,7 +35,7 @@ int get_current_gear() {
   int x = analogRead(PIN_SHIFTER_X);
   int y = analogRead(PIN_SHIFTER_Y);
 
-  if (y > 1000) {
+  if (y > 900) {
     if (x < 100) {
       return GEAR_7;
     }    
