@@ -1,8 +1,17 @@
+// To compile select:
+// - Tools -> Board -> Teensy LC
+//
+// Then:
+// If you want to debug and enable serial communication:
+// - Tools -> USB Type -> Serial / Keyboard / Mouse / Joystick
+// else
+// - Tools -> USB Type -> Keyboard / Mouse / Joystick
+
 //#define DEBUG
 
-#define PIN_X 1
-#define PIN_Y 2
-#define PIN_Z 0
+#define PIN_SHIFTER_X 1
+#define PIN_SHIFTER_Y 2
+#define PIN_HANDBRAKE 3
 
 #define GEAR_1 1
 #define GEAR_2 2
@@ -23,8 +32,8 @@ void setup() {
 
 
 int get_current_gear() {
-  int x = analogRead(PIN_X);
-  int y = analogRead(PIN_Y);
+  int x = analogRead(PIN_SHIFTER_X);
+  int y = analogRead(PIN_SHIFTER_Y);
 
   if (y > 1000) {
     if (x < 100) {
@@ -49,7 +58,7 @@ int get_current_gear() {
 
   }
 
-  if (y < 65) {
+  if (y < 150) {
     if (x < 300) {
       return GEAR_6;
     }  
@@ -67,21 +76,17 @@ int get_current_gear() {
 }
 
 void debug() {
-  Serial.print("x: ");
-  Serial.print(analogRead(PIN_X));
-  Serial.print(" y: ");
-  Serial.print(analogRead(PIN_Y));
-  Serial.print(" z: ");
-  Serial.println(analogRead(PIN_Z));
+  Serial.print("shifter x: ");
+  Serial.print(analogRead(PIN_SHIFTER_X));
+  Serial.print(" shifter y: ");
+  Serial.print(analogRead(PIN_SHIFTER_Y));
+  Serial.print(" handbrake: ");
+  Serial.println(analogRead(PIN_HANDBRAKE));
 }
 
-void loop() {
+void poll_shifter() {
   int gear = get_current_gear();
-  
-  #ifdef DEBUG
-  debug();
-  #endif
-  
+
   if (gear != 0) {
     Joystick.button(gear, 1);
     Joystick.send_now();
@@ -90,12 +95,38 @@ void loop() {
     
     Joystick.button(gear, 0);
     Joystick.send_now();
-    
+
     while (get_current_gear() != 0) {
       delay(5);
     }
-  }      
+  }
+}
+
+void poll_handbrake() {
+  int minBrakeValue = 60; // I got these values printing idle and max brake values
+  int maxBrakeValue = 160;
+  int rawBrake = analogRead(PIN_HANDBRAKE);
   
+  if (rawBrake > maxBrakeValue) {
+    rawBrake = maxBrakeValue;
+  } else if (rawBrake < minBrakeValue) {
+    rawBrake = minBrakeValue;
+  }
+  
+  int normalizedBrake = (rawBrake - minBrakeValue) * (1024 / (maxBrakeValue-minBrakeValue));
+  
+  Joystick.X(normalizedBrake);
+  Joystick.send_now();  
+}
+
+void loop() {
+  #ifdef DEBUG
+  debug();
+  #endif
+
+  pollShifter();
+  pollHandbrake();
+
   delay(5);
 }
 
